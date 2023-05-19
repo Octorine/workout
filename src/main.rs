@@ -1,4 +1,4 @@
-use iced::{Sandbox, Settings};
+use iced::{Application, Settings};
 mod app;
 
 fn main() {
