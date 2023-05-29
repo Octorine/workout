@@ -83,7 +83,7 @@ pub enum AppStatus {
 #[derive(Debug, Clone)]
 pub struct Exercise {
     name: String,
-    reps: usize,
+    amount: String,
     sets: usize,
     rest: Duration,
 }
@@ -98,38 +98,38 @@ impl Application for WorkoutApp {
                 status: AppStatus::Building,
                 exercises: vec![
                     Exercise {
-                        name: "Satatic Birddog Hold".to_string(),
-                        reps: 10,
+                        name: "Static Birddog Hold".to_string(),
+                        amount: "10 s".to_string(),
                         sets: 3,
                         rest: Duration::new(60, 0),
                     },
                     Exercise {
                         name: "Static Deadbug Hold".to_string(),
-                        reps: 15,
+                        amount: "15 s".to_string(),
                         sets: 3,
                         rest: Duration::new(60, 0),
                     },
                     Exercise {
                         name: "Squats".to_string(),
-                        reps: 8,
+                        amount: "8 reps".to_string(),
                         sets: 2,
                         rest: Duration::new(60, 0),
                     },
                     Exercise {
                         name: "Glute Bridges".to_string(),
-                        reps: 10,
+                        amount: "10 reps".to_string(),
                         sets: 2,
                         rest: Duration::new(60, 0),
                     },
                     Exercise {
                         name: "Rows".to_string(),
-                        reps: 12,
+                        amount: "12 reps".to_string(),
                         sets: 2,
                         rest: Duration::new(60, 0),
                     },
                     Exercise {
                         name: "Pushups".to_string(),
-                        reps: 12,
+                        amount: "12 reps".to_string(),
                         sets: 2,
                         rest: Duration::new(60, 0),
                     },
@@ -158,7 +158,7 @@ impl Application for WorkoutApp {
             WorkoutMessage::AddExercise => {
                 self.exercises.push(Exercise {
                     name: "".to_string(),
-                    reps: 0,
+                    amount: "10 reps".to_string(),
                     sets: 0,
                     rest: Duration::from_secs(60),
                 });
@@ -188,7 +188,7 @@ impl Application for WorkoutApp {
                     column = column.push(Text::new(format!(
                         "{}\nAmount: {}, Sets: {}, Rest: {}",
                         exercise.name,
-                        exercise.reps,
+                        exercise.amount,
                         exercise.sets,
                         exercise.rest.as_secs_f64()
                     )));
@@ -206,7 +206,7 @@ impl Application for WorkoutApp {
                 let content = Text::new(format!(
                     "Current Exercise: {}, Amount: {}, Set {} of {}",
                     self.exercises[self.current_exercise].name,
-                    self.exercises[self.current_exercise].reps,
+                    self.exercises[self.current_exercise].amount,
                     self.current_set + 1, // 1-indexed for humans
                     self.exercises[self.current_exercise].sets
                 ));
