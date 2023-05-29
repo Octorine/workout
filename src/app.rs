@@ -26,9 +26,19 @@ impl WorkoutApp {
         match self.status {
             AppStatus::Building => self.status = AppStatus::Exercising,
             AppStatus::Exercising => {
-                self.status = AppStatus::Resting;
-                self.last_update = Instant::now();
-                self.rest_start = Instant::now();
+                if self.current_set >= self.exercises[self.current_exercise].sets - 1 {
+                    self.current_set = 0;
+                    self.current_exercise += 1;
+                    if self.current_exercise >= self.exercises.len() - 1 {
+                        self.status = AppStatus::Building;
+                        self.current_exercise = 0;
+                        self.current_set = 0;
+                    }
+                } else {
+                    self.status = AppStatus::Resting;
+                    self.last_update = Instant::now();
+                    self.rest_start = Instant::now();
+                }
             }
             AppStatus::Resting => {
                 let exercise = self.exercises[self.current_exercise].clone();
@@ -52,23 +62,18 @@ impl WorkoutApp {
         match self.status {
             AppStatus::Building => (),
             AppStatus::Exercising => {
-                let exercise = self.exercises[self.current_exercise].clone();
-                self.current_set = self.current_set.saturating_sub(1);
-                if self.current_set <= 0 {
-                    self.current_set = exercise.sets - 1;
-                    self.current_exercise = self.current_exercise.saturating_sub(1);
-                }
-                if self.current_exercise <= 0 {
-                    self.current_exercise = 0;
-                    self.current_set = 0;
+                if self.current_exercise == 0 && self.current_set == 0 {
                     self.status = AppStatus::Building;
+                } else if self.current_set == 0 {
+                    self.current_exercise -= 1;
+                    self.current_set = self.exercises[self.current_exercise].sets - 1;
                 } else {
-                    self.status = AppStatus::Resting;
-                    self.last_update = Instant::now();
-                    self.rest_start = Instant::now();
+                    self.current_set -= 1;
                 }
             }
-            AppStatus::Resting => {}
+            AppStatus::Resting => {
+                self.status = AppStatus::Exercising;
+            }
         }
     }
 }
