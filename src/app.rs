@@ -1,9 +1,14 @@
 use iced::executor::Default;
+use iced::time;
+use iced::widget::Button;
+use iced::widget::Column;
 use iced::widget::Container;
+use iced::widget::Row;
 use iced::widget::Text;
 use iced::Application;
 use iced::Command;
 use iced::Element;
+use iced::Subscription;
 use iced::Theme;
 use std::time::{Duration, Instant};
 #[derive(Debug)]
@@ -15,6 +20,59 @@ pub struct WorkoutApp {
     rest_start: Instant,
     last_update: Instant,
 }
+
+impl WorkoutApp {
+    pub fn next(&mut self) {
+        match self.status {
+            AppStatus::Building => self.status = AppStatus::Exercising,
+            AppStatus::Exercising => {
+                self.status = AppStatus::Resting;
+                self.last_update = Instant::now();
+                self.rest_start = Instant::now();
+            }
+            AppStatus::Resting => {
+                let exercise = self.exercises[self.current_exercise].clone();
+                self.current_set += 1;
+                if self.current_set >= exercise.sets {
+                    self.current_set = 0;
+                    self.current_exercise += 1;
+                }
+                if self.current_exercise >= self.exercises.len() {
+                    self.current_exercise = 0;
+                    self.current_set = 0;
+
+                    self.status = AppStatus::Building;
+                } else {
+                    self.status = AppStatus::Exercising;
+                }
+            }
+        }
+    }
+    pub fn prev(&mut self) {
+        match self.status {
+            AppStatus::Building => (),
+            AppStatus::Exercising => {
+                let exercise = self.exercises[self.current_exercise].clone();
+                self.current_set = self.current_set.saturating_sub(1);
+                if self.current_set <= 0 {
+                    self.current_set = exercise.sets - 1;
+                    self.current_exercise = self.current_exercise.saturating_sub(1);
+                }
+                if self.current_exercise <= 0 {
+                    self.current_exercise = 0;
+                    self.current_set = 0;
+                    self.status = AppStatus::Building;
+                } else {
+                    self.status = AppStatus::Resting;
+                    self.last_update = Instant::now();
+                    self.rest_start = Instant::now();
+                }
+            }
+            AppStatus::Resting => {}
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum AppStatus {
     Building,
@@ -22,7 +80,7 @@ pub enum AppStatus {
     Resting,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Exercise {
     name: String,
     reps: usize,
@@ -38,7 +96,44 @@ impl Application for WorkoutApp {
         (
             WorkoutApp {
                 status: AppStatus::Building,
-                exercises: vec![],
+                exercises: vec![
+                    Exercise {
+                        name: "Satatic Birddog Hold".to_string(),
+                        reps: 10,
+                        sets: 3,
+                        rest: Duration::new(60, 0),
+                    },
+                    Exercise {
+                        name: "Static Deadbug Hold".to_string(),
+                        reps: 15,
+                        sets: 3,
+                        rest: Duration::new(60, 0),
+                    },
+                    Exercise {
+                        name: "Squats".to_string(),
+                        reps: 8,
+                        sets: 2,
+                        rest: Duration::new(60, 0),
+                    },
+                    Exercise {
+                        name: "Glute Bridges".to_string(),
+                        reps: 10,
+                        sets: 2,
+                        rest: Duration::new(60, 0),
+                    },
+                    Exercise {
+                        name: "Rows".to_string(),
+                        reps: 12,
+                        sets: 2,
+                        rest: Duration::new(60, 0),
+                    },
+                    Exercise {
+                        name: "Pushups".to_string(),
+                        reps: 12,
+                        sets: 2,
+                        rest: Duration::new(60, 0),
+                    },
+                ],
                 current_exercise: 0,
                 current_set: 0,
                 rest_start: Instant::now(),
@@ -54,22 +149,7 @@ impl Application for WorkoutApp {
 
     fn update(&mut self, message: Self::Message) -> iced::Command<WorkoutMessage> {
         match message {
-            WorkoutMessage::StartExercising => {
-                self.status = AppStatus::Exercising;
-            }
-            WorkoutMessage::StartResting => {
-                self.status = AppStatus::Resting;
-                self.rest_start = Instant::now();
-            }
-            WorkoutMessage::Next => {
-                if let Some(e) = self.exercises.get(self.current_exercise) {
-                    self.current_set += 1;
-                    if self.current_set >= e.sets {
-                        self.current_set = 0;
-                        self.current_exercise = (self.current_exercise + 1) % self.exercises.len();
-                    }
-                }
-            }
+            WorkoutMessage::Next => self.next(),
             WorkoutMessage::UpdateText { index, text } => {
                 if let Some(e) = self.exercises.get_mut(index) {
                     e.name = text;
@@ -86,14 +166,7 @@ impl Application for WorkoutApp {
             WorkoutMessage::RemoveExercise(index) => {
                 self.exercises.remove(index);
             }
-            WorkoutMessage::Previous => {
-                if self.current_set == 0 {
-                    if self.current_exercise > 0 {
-                        self.current_exercise -= 1;
-                        self.current_set = self.exercises[self.current_exercise].sets - 1;
-                    }
-                }
-            }
+            WorkoutMessage::Previous => self.prev(),
             WorkoutMessage::UpdateTimer(tick) => {
                 self.last_update = tick;
             }
@@ -104,9 +177,66 @@ impl Application for WorkoutApp {
 
     fn view(&self) -> Element<'_, Self::Message> {
         match self.status {
-            AppStatus::Building => Container::new(Text::new("Welcome to the app")).into(),
-            AppStatus::Exercising => todo!(),
-            AppStatus::Resting => todo!(),
+            AppStatus::Building => {
+                let mut row = Row::new();
+                let mut column = Column::new();
+                let prev_button = Button::new("Previous").on_press(WorkoutMessage::Previous);
+                let next_button = Button::new("Next").on_press(WorkoutMessage::Next);
+                let content = Text::new("Current Exercises");
+                column = column.push(content);
+                for exercise in self.exercises.iter() {
+                    column = column.push(Text::new(format!(
+                        "{}\nAmount: {}, Sets: {}, Rest: {}",
+                        exercise.name,
+                        exercise.reps,
+                        exercise.sets,
+                        exercise.rest.as_secs_f64()
+                    )));
+                }
+                row = row.push(prev_button);
+                row = row.push(next_button);
+                column = column.push(row);
+                Container::new(column).into()
+            }
+            AppStatus::Exercising => {
+                let mut column = Column::new();
+                let prev_button = Button::new("Previous").on_press(WorkoutMessage::Previous);
+                let next_button = Button::new("Next").on_press(WorkoutMessage::Next);
+                let mut row = Row::new();
+                let content = Text::new(format!(
+                    "Current Exercise: {}, Amount: {}, Set {} of {}",
+                    self.exercises[self.current_exercise].name,
+                    self.exercises[self.current_exercise].reps,
+                    self.current_set + 1, // 1-indexed for humans
+                    self.exercises[self.current_exercise].sets
+                ));
+                column = column.push(content);
+
+                row = row.push(prev_button);
+                row = row.push(next_button);
+                column = column.push(row);
+                Container::new(column).into()
+            }
+            AppStatus::Resting => {
+                let mut column = Column::new();
+                let prev_button = Button::new("Previous").on_press(WorkoutMessage::Previous);
+                let next_button = Button::new("Next").on_press(WorkoutMessage::Next);
+                let mut row = Row::new();
+                let current_rest = self.exercises[self.current_exercise].rest.as_secs_f64();
+                let current_seconds = (self.last_update - self.rest_start).as_secs_f64();
+                let seconds_left = current_rest - current_seconds;
+                let content = Text::new(if seconds_left <= 0.0 {
+                    "Done".to_string()
+                } else {
+                    format!("{}", seconds_left.round() as usize)
+                });
+                column = column.push(content);
+
+                row = row.push(prev_button);
+                row = row.push(next_button);
+                column = column.push(row);
+                Container::new(column).into()
+            }
         }
     }
 
@@ -115,12 +245,19 @@ impl Application for WorkoutApp {
     type Theme = Theme;
 
     type Flags = ();
+
+    fn subscription(&self) -> Subscription<Self::Message> {
+        match self.status {
+            AppStatus::Resting => {
+                time::every(Duration::from_millis(99)).map(WorkoutMessage::UpdateTimer)
+            }
+            _ => Subscription::none(),
+        }
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum WorkoutMessage {
-    StartExercising,
-    StartResting,
     Next,
     Previous,
     UpdateText { index: usize, text: String },
