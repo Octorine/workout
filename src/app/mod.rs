@@ -36,7 +36,7 @@ impl WorkoutApp {
                 if self.current_set >= self.exercises[self.current_exercise].sets - 1 {
                     self.current_set = 0;
                     self.current_exercise += 1;
-                    if self.current_exercise >= self.exercises.len() - 1 {
+                    if self.current_exercise > self.exercises.len() - 1 {
                         self.status = AppStatus::Building;
                         self.current_exercise = 0;
                         self.current_set = 0;
@@ -123,13 +123,13 @@ impl Application for WorkoutApp {
                     },
                     Exercise {
                         name: "Squats".to_string(),
-                        amount: "8 reps".to_string(),
+                        amount: "9 reps".to_string(),
                         sets: 2,
                         rest: Duration::new(60, 0),
                     },
                     Exercise {
                         name: "Glute Bridges".to_string(),
-                        amount: "10 reps".to_string(),
+                        amount: "11 reps".to_string(),
                         sets: 2,
                         rest: Duration::new(60, 0),
                     },
