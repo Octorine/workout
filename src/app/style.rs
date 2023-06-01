@@ -16,7 +16,7 @@ impl Default for AppStyle {
             header: Text::default(),
             text: Text::default(),
             page: Container::default(),
-            table_column_width: 300,
+            table_column_width: 200,
             table_row_padding: 10,
             exercise_row_padding: 10,
         }

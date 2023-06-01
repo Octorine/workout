@@ -95,7 +95,8 @@ pub enum AppStatus {
 #[derive(Debug, Clone)]
 pub struct Exercise {
     name: String,
-    amount: String,
+    progression: (usize, usize),
+    reps: usize,
     sets: usize,
     rest: Duration,
 }
@@ -111,39 +112,45 @@ impl Application for WorkoutApp {
                 exercises: vec![
                     Exercise {
                         name: "Static Birddog Hold".to_string(),
-                        amount: "10 s".to_string(),
+                        progression: (6, 10),
+                        reps: 6,
                         sets: 3,
                         rest: Duration::new(60, 0),
                     },
                     Exercise {
                         name: "Static Deadbug Hold".to_string(),
-                        amount: "15 s".to_string(),
+                        progression: (6, 10),
+                        reps: 6,
                         sets: 3,
                         rest: Duration::new(60, 0),
                     },
                     Exercise {
                         name: "Squats".to_string(),
-                        amount: "9 reps".to_string(),
-                        sets: 2,
-                        rest: Duration::new(60, 0),
+                        progression: (8, 15),
+                        reps: 8,
+                        sets: 3,
+                        rest: Duration::new(90, 0),
                     },
                     Exercise {
                         name: "Glute Bridges".to_string(),
-                        amount: "11 reps".to_string(),
-                        sets: 2,
-                        rest: Duration::new(60, 0),
+                        progression: (8, 15),
+                        reps: 8,
+                        sets: 3,
+                        rest: Duration::new(90, 0),
                     },
                     Exercise {
-                        name: "Rows".to_string(),
-                        amount: "12 reps".to_string(),
-                        sets: 2,
-                        rest: Duration::new(60, 0),
+                        name: "Chest Rows".to_string(),
+                        progression: (5, 12),
+                        reps: 5,
+                        sets: 3,
+                        rest: Duration::new(120, 0),
                     },
                     Exercise {
-                        name: "Pushups".to_string(),
-                        amount: "12 reps".to_string(),
-                        sets: 2,
-                        rest: Duration::new(60, 0),
+                        name: "Chest Pushups".to_string(),
+                        progression: (5, 12),
+                        reps: 5,
+                        sets: 3,
+                        rest: Duration::new(120, 0),
                     },
                 ],
                 current_exercise: 0,
@@ -170,7 +177,8 @@ impl Application for WorkoutApp {
             WorkoutMessage::AddExercise => {
                 self.exercises.push(Exercise {
                     name: "".to_string(),
-                    amount: "10 reps".to_string(),
+                    progression: (5, 12),
+                    reps: 5,
                     sets: 0,
                     rest: Duration::from_secs(60),
                 });
@@ -202,7 +210,8 @@ impl Application for WorkoutApp {
                 column = column.push(content);
                 let mut header = Row::new();
                 header = header.push(Text::new("Name").width(style.table_column_width));
-                header = header.push(Text::new("Amount").width(style.table_column_width));
+                header = header.push(Text::new("Progression").width(style.table_column_width));
+                header = header.push(Text::new("Reps").width(style.table_column_width));
                 header = header.push(Text::new("Sets").width(style.table_column_width));
                 header = header.push(Text::new("Rest").width(style.table_column_width));
                 column = column.push(header);
@@ -210,13 +219,26 @@ impl Application for WorkoutApp {
 
                 for exercise in self.exercises.iter() {
                     let mut row = Row::new().padding(style.table_row_padding);
-                    row =
-                        row.push(Text::new(exercise.name.clone()).width(style.table_column_width));
+                    row = row.push(
+                        Text::new(exercise.name.clone())
+                            .width(200)
+                            .width(style.table_column_width),
+                    );
+                    row = row.push(
+                        Text::new(format!(
+                            "{}-{}",
+                            exercise.progression.0, exercise.progression.1
+                        ))
+                        .width(style.table_column_width),
+                    );
                     row = row
-                        .push(Text::new(exercise.amount.clone()).width(style.table_column_width));
+                        .push(Text::new(exercise.reps.to_string()).width(style.table_column_width));
                     row = row
                         .push(Text::new(exercise.sets.to_string()).width(style.table_column_width));
-                    row = row.push(Text::new(exercise.rest.as_secs_f64().to_string()));
+                    row = row.push(
+                        Text::new(exercise.rest.as_secs_f64().to_string())
+                            .width(style.table_column_width),
+                    );
 
                     column = column.push(row);
                 }
@@ -230,23 +252,31 @@ impl Application for WorkoutApp {
                 let prev_button = Button::new("Previous").on_press(WorkoutMessage::Previous);
                 let next_button = Button::new("Next").on_press(WorkoutMessage::Next);
                 let mut navigation = Row::new();
-                column = column.push(Text::new(format!(
-                    "Current Exercise: {}",
-                    self.exercises[self.current_exercise].name
-                ))                    .width(Length::Fill)
-                    .horizontal_alignment(Horizontal::Center)
-);
-                column = column.push(Text::new(format!(
-                    "Amount: {}",
-                    self.exercises[self.current_exercise].amount
-                )).width(Length::Fill)
-                    .horizontal_alignment(Horizontal::Center));
-                column = column.push(Text::new(format!(
-                    "Set {} of {}",
-                    self.current_set + 1, // 1-indexed for humans
-                    self.exercises[self.current_exercise].sets
-                )).width(Length::Fill)
-                    .horizontal_alignment(Horizontal::Center));
+                column = column.push(
+                    Text::new(format!(
+                        "Current Exercise: {}",
+                        self.exercises[self.current_exercise].name
+                    ))
+                    .width(Length::Fill)
+                    .horizontal_alignment(Horizontal::Center),
+                );
+                column = column.push(
+                    Text::new(format!(
+                        "Amount: {}",
+                        self.exercises[self.current_exercise].reps.to_string()
+                    ))
+                    .width(Length::Fill)
+                    .horizontal_alignment(Horizontal::Center),
+                );
+                column = column.push(
+                    Text::new(format!(
+                        "Set {} of {}",
+                        self.current_set + 1, // 1-indexed for humans
+                        self.exercises[self.current_exercise].sets
+                    ))
+                    .width(Length::Fill)
+                    .horizontal_alignment(Horizontal::Center),
+                );
 
                 navigation = navigation.push(prev_button);
                 navigation = navigation.push(next_button);
@@ -265,10 +295,14 @@ impl Application for WorkoutApp {
                     "Done".to_string()
                 } else {
                     format!("{}", seconds_left.round() as usize)
-                }).width(Length::Fill)
-                    .horizontal_alignment(Horizontal::Center);
-		column = column.push(Text::new("Rest").width(Length::Fill)
-                    .horizontal_alignment(Horizontal::Center));
+                })
+                .width(Length::Fill)
+                .horizontal_alignment(Horizontal::Center);
+                column = column.push(
+                    Text::new("Rest")
+                        .width(Length::Fill)
+                        .horizontal_alignment(Horizontal::Center),
+                );
                 column = column.push(content);
 
                 navigation = navigation.push(prev_button);
