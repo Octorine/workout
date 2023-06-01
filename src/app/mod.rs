@@ -1,3 +1,4 @@
+use iced::Renderer;
 use iced::alignment::Horizontal;
 use iced::executor::Default;
 use iced::time;
@@ -29,6 +30,13 @@ pub struct WorkoutApp {
 }
 
 impl WorkoutApp {
+    pub fn make_navigation<'a>(&self) -> Row<'a, WorkoutMessage> {
+        let mut navigation = Row::new();
+        navigation = navigation.push(Button::new("Previous").on_press(WorkoutMessage::Previous).width(200));
+        navigation = navigation.push(Button::new("Next").on_press(WorkoutMessage::Next).width(200));
+        navigation.width(Length::Fill).spacing(300).padding(100)
+    }
+
     pub fn next(&mut self) {
         match self.status {
             AppStatus::Building => self.status = AppStatus::Exercising,
@@ -197,17 +205,15 @@ impl Application for WorkoutApp {
 
     fn view(&self) -> Element<'_, Self::Message> {
         let style = style::AppStyle::default();
-
+	
         match self.status {
             AppStatus::Building => {
-                let mut navigation = Row::new();
                 let mut column = Column::new();
-                let prev_button = Button::new("Previous").on_press(WorkoutMessage::Previous);
-                let next_button = Button::new("Next").on_press(WorkoutMessage::Next);
                 let content = Text::new("Current Exercises")
                     .width(Length::Fill)
                     .horizontal_alignment(Horizontal::Center);
-                column = column.push(content);
+		
+		column = column.push(content);
                 let mut header = Row::new();
                 header = header.push(Text::new("Name").width(style.table_column_width));
                 header = header.push(Text::new("Progression").width(style.table_column_width));
@@ -242,16 +248,11 @@ impl Application for WorkoutApp {
 
                     column = column.push(row);
                 }
-                navigation = navigation.push(prev_button);
-                navigation = navigation.push(next_button);
-                column = column.push(navigation);
+                column = column.push(self.make_navigation());
                 Container::new(column).center_x().center_y().into()
             }
             AppStatus::Exercising => {
                 let mut column = Column::new();
-                let prev_button = Button::new("Previous").on_press(WorkoutMessage::Previous);
-                let next_button = Button::new("Next").on_press(WorkoutMessage::Next);
-                let mut navigation = Row::new();
                 column = column.push(
                     Text::new(format!(
                         "Current Exercise: {}",
@@ -278,16 +279,11 @@ impl Application for WorkoutApp {
                     .horizontal_alignment(Horizontal::Center),
                 );
 
-                navigation = navigation.push(prev_button);
-                navigation = navigation.push(next_button);
-                column = column.push(navigation);
+                column = column.push(self.make_navigation());
                 Container::new(column).center_x().center_y().into()
             }
             AppStatus::Resting => {
                 let mut column = Column::new();
-                let prev_button = Button::new("Previous").on_press(WorkoutMessage::Previous);
-                let next_button = Button::new("Next").on_press(WorkoutMessage::Next);
-                let mut navigation = Row::new();
                 let current_rest = self.exercises[self.current_exercise].rest.as_secs_f64();
                 let current_seconds = (self.last_update - self.rest_start).as_secs_f64();
                 let seconds_left = current_rest - current_seconds;
@@ -305,9 +301,7 @@ impl Application for WorkoutApp {
                 );
                 column = column.push(content);
 
-                navigation = navigation.push(prev_button);
-                navigation = navigation.push(next_button);
-                column = column.push(navigation);
+                column = column.push(self.make_navigation());
                 Container::new(column).center_x().center_y().into()
             }
         }
