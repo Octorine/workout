@@ -1,4 +1,3 @@
-use iced::Renderer;
 use iced::alignment::Horizontal;
 use iced::executor::Default;
 use iced::time;
@@ -12,11 +11,10 @@ use iced::Application;
 use iced::Command;
 use iced::Element;
 use iced::Length;
-
 use iced::Subscription;
 use iced::Theme;
+use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
-
 mod style;
 
 #[derive(Debug)]
@@ -32,14 +30,25 @@ pub struct WorkoutApp {
 impl WorkoutApp {
     pub fn make_navigation<'a>(&self) -> Row<'a, WorkoutMessage> {
         let mut navigation = Row::new();
-        navigation = navigation.push(Button::new("Previous").on_press(WorkoutMessage::Previous).width(200));
-        navigation = navigation.push(Button::new("Next").on_press(WorkoutMessage::Next).width(200));
+        navigation = navigation.push(
+            Button::new("Previous")
+                .on_press(WorkoutMessage::Previous)
+                .width(200),
+        );
+        navigation = navigation.push(
+            Button::new("Next")
+                .on_press(WorkoutMessage::Next)
+                .width(200),
+        );
         navigation.width(Length::Fill).spacing(300).padding(100)
     }
 
     pub fn next(&mut self) {
         match self.status {
-            AppStatus::Building => self.status = AppStatus::Exercising,
+            AppStatus::Building => {
+		self.status = AppStatus::Exercising;
+		std::fs::write("exercises.json", serde_json::to_string(&self.exercises).unwrap());
+	    }		
             AppStatus::Exercising => {
                 if self.current_set >= self.exercises[self.current_exercise].sets - 1 {
                     self.current_set = 0;
@@ -100,7 +109,7 @@ pub enum AppStatus {
     Resting,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Exercise {
     name: String,
     progression: (usize, usize),
@@ -109,58 +118,32 @@ pub struct Exercise {
     rest: Duration,
 }
 
+impl std::default::Default for Exercise {
+    fn default() -> Self {
+        Exercise {
+            name: "Exercise".to_string(),
+            progression: (5, 12),
+            reps: 5,
+            sets: 3,
+            rest: Duration::new(60, 0),
+        }
+    }
+}
+
 impl Application for WorkoutApp {
     type Message = WorkoutMessage;
 
     fn new(flags: <WorkoutApp as iced::Application>::Flags) -> (Self, Command<WorkoutMessage>) {
-        // TODO
+        let saved_exercises = std::fs::read_to_string("exercises.json");
+        let mut exercises = vec![Exercise::default()];
+        if let Ok(json_file) = std::fs::read_to_string("exercises.json") {
+          exercises = serde_json::from_str(&json_file).unwrap();
+        }
+
         (
             WorkoutApp {
                 status: AppStatus::Building,
-                exercises: vec![
-                    Exercise {
-                        name: "Static Birddog Hold".to_string(),
-                        progression: (6, 10),
-                        reps: 6,
-                        sets: 3,
-                        rest: Duration::new(60, 0),
-                    },
-                    Exercise {
-                        name: "Static Deadbug Hold".to_string(),
-                        progression: (6, 10),
-                        reps: 6,
-                        sets: 3,
-                        rest: Duration::new(60, 0),
-                    },
-                    Exercise {
-                        name: "Squats".to_string(),
-                        progression: (8, 15),
-                        reps: 8,
-                        sets: 3,
-                        rest: Duration::new(90, 0),
-                    },
-                    Exercise {
-                        name: "Glute Bridges".to_string(),
-                        progression: (8, 15),
-                        reps: 8,
-                        sets: 3,
-                        rest: Duration::new(90, 0),
-                    },
-                    Exercise {
-                        name: "Chest Rows".to_string(),
-                        progression: (5, 12),
-                        reps: 5,
-                        sets: 3,
-                        rest: Duration::new(120, 0),
-                    },
-                    Exercise {
-                        name: "Chest Pushups".to_string(),
-                        progression: (5, 12),
-                        reps: 5,
-                        sets: 3,
-                        rest: Duration::new(120, 0),
-                    },
-                ],
+                exercises,
                 current_exercise: 0,
                 current_set: 0,
                 rest_start: Instant::now(),
@@ -205,15 +188,15 @@ impl Application for WorkoutApp {
 
     fn view(&self) -> Element<'_, Self::Message> {
         let style = style::AppStyle::default();
-	
+
         match self.status {
             AppStatus::Building => {
                 let mut column = Column::new();
                 let content = Text::new("Current Exercises")
                     .width(Length::Fill)
                     .horizontal_alignment(Horizontal::Center);
-		
-		column = column.push(content);
+
+                column = column.push(content);
                 let mut header = Row::new();
                 header = header.push(Text::new("Name").width(style.table_column_width));
                 header = header.push(Text::new("Progression").width(style.table_column_width));
