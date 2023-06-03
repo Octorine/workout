@@ -7,6 +7,7 @@ use iced::widget::Container;
 use iced::widget::Row;
 use iced::widget::Rule;
 use iced::widget::Text;
+use iced::widget::TextInput;
 use iced::Application;
 use iced::Command;
 use iced::Element;
@@ -29,6 +30,7 @@ pub struct WorkoutApp {
 
 impl WorkoutApp {
     pub fn make_navigation<'a>(&self) -> Row<'a, WorkoutMessage> {
+
         let mut navigation = Row::new();
         navigation = navigation.push(
             Button::new("Previous")
@@ -46,9 +48,12 @@ impl WorkoutApp {
     pub fn next(&mut self) {
         match self.status {
             AppStatus::Building => {
-		self.status = AppStatus::Exercising;
-		std::fs::write("exercises.json", serde_json::to_string(&self.exercises).unwrap());
-	    }		
+                self.status = AppStatus::Exercising;
+                std::fs::write(
+                    "exercises.json",
+                    serde_json::to_string(&self.exercises).unwrap(),
+                );
+            }
             AppStatus::Exercising => {
                 if self.current_set >= self.exercises[self.current_exercise].sets - 1 {
                     self.current_set = 0;
@@ -117,6 +122,14 @@ pub struct Exercise {
     sets: usize,
     rest: Duration,
 }
+#[derive(Debug, Clone)]
+pub enum Field {
+    Name,
+    Progression,
+    Reps,
+    Sets,
+    Rest,
+}
 
 impl std::default::Default for Exercise {
     fn default() -> Self {
@@ -137,7 +150,7 @@ impl Application for WorkoutApp {
         let saved_exercises = std::fs::read_to_string("exercises.json");
         let mut exercises = vec![Exercise::default()];
         if let Ok(json_file) = std::fs::read_to_string("exercises.json") {
-          exercises = serde_json::from_str(&json_file).unwrap();
+            exercises = serde_json::from_str(&json_file).unwrap();
         }
 
         (
@@ -160,19 +173,38 @@ impl Application for WorkoutApp {
     fn update(&mut self, message: Self::Message) -> iced::Command<WorkoutMessage> {
         match message {
             WorkoutMessage::Next => self.next(),
-            WorkoutMessage::UpdateText { index, text } => {
+            WorkoutMessage::UpdateText { index, field, text } => {
                 if let Some(e) = self.exercises.get_mut(index) {
-                    e.name = text;
+                    match field {
+                        Field::Name => e.name = text,
+                        Field::Progression => {
+                            if text.contains("-") {
+                                let mut split = text.split("-");
+                                let starting = split.next().unwrap().parse().unwrap_or(0);
+                                let ending = split.next().unwrap().parse().unwrap_or(0);
+                                e.progression = (starting, ending);
+                            }
+                        }
+                        Field::Reps => {
+                            if let Ok(r) = text.parse() {
+                                e.reps = r
+                            }
+                        }
+                        Field::Sets => {
+                            if let Ok(s) = text.parse() {
+                                e.sets = s
+                            }
+                        }
+                        Field::Rest => {
+                            if let Ok(seconds) = text.parse() {
+                                e.rest = Duration::from_secs_f64(seconds);
+                            }
+                        }
+                    }
                 }
             }
             WorkoutMessage::AddExercise => {
-                self.exercises.push(Exercise {
-                    name: "".to_string(),
-                    progression: (5, 12),
-                    reps: 5,
-                    sets: 0,
-                    rest: Duration::from_secs(60),
-                });
+                self.exercises.push(Exercise::default());
             }
             WorkoutMessage::RemoveExercise(index) => {
                 self.exercises.remove(index);
@@ -183,7 +215,6 @@ impl Application for WorkoutApp {
             }
         }
         Command::none()
-        //TODO
     }
 
     fn view(&self) -> Element<'_, Self::Message> {
@@ -198,35 +229,65 @@ impl Application for WorkoutApp {
 
                 column = column.push(content);
                 let mut header = Row::new();
-                header = header.push(Text::new("Name").width(style.table_column_width));
+                header = header.push(Text::new("Name").width(300));
                 header = header.push(Text::new("Progression").width(style.table_column_width));
-                header = header.push(Text::new("Reps").width(style.table_column_width));
-                header = header.push(Text::new("Sets").width(style.table_column_width));
-                header = header.push(Text::new("Rest").width(style.table_column_width));
+                header = header.push(Text::new("Reps").width(100));
+                header = header.push(Text::new("Sets").width(100));
+                header = header.push(Text::new("Rest").width(100));
                 column = column.push(header);
                 column = column.push(Rule::horizontal(10));
 
-                for exercise in self.exercises.iter() {
+                for (i, exercise) in self.exercises.iter().enumerate() {
                     let mut row = Row::new().padding(style.table_row_padding);
                     row = row.push(
-                        Text::new(exercise.name.clone())
-                            .width(200)
-                            .width(style.table_column_width),
+                        TextInput::new(&exercise.name, &exercise.name)
+                            .width(300)
+                            .on_input(move |text| WorkoutMessage::UpdateText {
+                                index: i,
+                                field: Field::Name,
+                                text,
+                            }),
+                    );
+                    let text_value =
+                        format!("{}-{}", exercise.progression.0, exercise.progression.1);
+
+                    row = row.push(
+                        TextInput::new(&text_value, &text_value)
+                            .width(style.table_column_width)
+                            .on_input(move |text| WorkoutMessage::UpdateText {
+                                index: i,
+                                field: Field::Progression,
+                                text,
+                            }),
                     );
                     row = row.push(
-                        Text::new(format!(
-                            "{}-{}",
-                            exercise.progression.0, exercise.progression.1
-                        ))
-                        .width(style.table_column_width),
+                        TextInput::new(&exercise.reps.to_string(), &exercise.reps.to_string())
+                            .width(100)
+                            .on_input(move |text| WorkoutMessage::UpdateText {
+                                index: i,
+                                field: Field::Reps,
+                                text,
+                            }),
                     );
-                    row = row
-                        .push(Text::new(exercise.reps.to_string()).width(style.table_column_width));
-                    row = row
-                        .push(Text::new(exercise.sets.to_string()).width(style.table_column_width));
                     row = row.push(
-                        Text::new(exercise.rest.as_secs_f64().to_string())
-                            .width(style.table_column_width),
+                        TextInput::new(&exercise.sets.to_string(), &exercise.sets.to_string())
+                            .width(100)                            .on_input(move |text| WorkoutMessage::UpdateText {
+                                index: i,
+                                field: Field::Sets,
+                                text,
+                            }),
+                    );
+                    row = row.push(
+                        TextInput::new(
+                            &exercise.rest.as_secs_f64().to_string(),
+                            &exercise.rest.as_secs_f64().to_string(),
+                        )
+                        .width(100)
+                        .on_input(move |text| WorkoutMessage::UpdateText {
+                            index: i,
+                            field: Field::Rest,
+                            text,
+                        }),
                     );
 
                     column = column.push(row);
@@ -287,7 +348,7 @@ impl Application for WorkoutApp {
                 column = column.push(self.make_navigation());
                 Container::new(column).center_x().center_y().into()
             }
-        }
+	}
     }
 
     type Executor = Default;
@@ -304,13 +365,34 @@ impl Application for WorkoutApp {
             _ => Subscription::none(),
         }
     }
+
+    fn theme(&self) -> Self::Theme {
+        Self::Theme::default()
+    }
+
+    fn style(&self) -> <Self::Theme as iced::application::StyleSheet>::Style {
+        <Self::Theme as iced::application::StyleSheet>::Style::default()
+    }
+
+    fn scale_factor(&self) -> f64 {
+        1.0
+    }
+
+
+
+
 }
+
 
 #[derive(Debug, Clone)]
 pub enum WorkoutMessage {
     Next,
     Previous,
-    UpdateText { index: usize, text: String },
+    UpdateText {
+        index: usize,
+        field: Field,
+        text: String,
+    },
     AddExercise,
     RemoveExercise(usize),
     UpdateTimer(Instant),
