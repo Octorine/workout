@@ -30,7 +30,6 @@ pub struct WorkoutApp {
 
 impl WorkoutApp {
     pub fn make_navigation<'a>(&self) -> Row<'a, WorkoutMessage> {
-
         let mut navigation = Row::new();
         navigation = navigation.push(
             Button::new("Previous")
@@ -48,11 +47,23 @@ impl WorkoutApp {
     pub fn next(&mut self) {
         match self.status {
             AppStatus::Building => {
-                self.status = AppStatus::Exercising;
-                std::fs::write(
-                    "exercises.json",
-                    serde_json::to_string(&self.exercises).unwrap(),
-                );
+                if self.exercises.len() == 0
+                    || self.exercises.iter().any(|ex| {
+                        ex.sets == 0
+                            || ex.reps == 0
+                            || ex.progression.0 == 0
+                            || ex.progression.1 == 0
+                            || ex.rest.as_secs() == 0
+                    })
+                {
+                    ()
+                } else {
+                    self.status = AppStatus::Exercising;
+                    std::fs::write(
+                        "exercises.json",
+                        serde_json::to_string(&self.exercises).unwrap(),
+                    );
+                }
             }
             AppStatus::Exercising => {
                 if self.current_set >= self.exercises[self.current_exercise].sets - 1 {
@@ -142,7 +153,20 @@ impl std::default::Default for Exercise {
         }
     }
 }
-
+fn no_zero(n: usize) -> String {
+    if n == 0 {
+        String::new()
+    } else {
+        n.to_string()
+    }
+}
+fn no_zero_f64(n: f64) -> String{
+    if n == 0.0 {
+        String::new()
+    } else {
+        n.to_string()
+    }
+}
 impl Application for WorkoutApp {
     type Message = WorkoutMessage;
 
@@ -186,19 +210,13 @@ impl Application for WorkoutApp {
                             }
                         }
                         Field::Reps => {
-                            if let Ok(r) = text.parse() {
-                                e.reps = r
-                            }
+                            e.reps = text.parse().unwrap_or(0);
                         }
                         Field::Sets => {
-                            if let Ok(s) = text.parse() {
-                                e.sets = s
-                            }
+                            e.sets = text.parse().unwrap_or(0);
                         }
                         Field::Rest => {
-                            if let Ok(seconds) = text.parse() {
-                                e.rest = Duration::from_secs_f64(seconds);
-                            }
+                            e.rest = Duration::from_secs_f64(text.parse().unwrap_or(0.0));
                         }
                     }
                 }
@@ -248,8 +266,11 @@ impl Application for WorkoutApp {
                                 text,
                             }),
                     );
-                    let text_value =
-                        format!("{}-{}", exercise.progression.0, exercise.progression.1);
+                    let text_value = format!(
+                        "{}-{}",
+                        no_zero(exercise.progression.0),
+                        no_zero(exercise.progression.1)
+                    );
 
                     row = row.push(
                         TextInput::new(&text_value, &text_value)
@@ -261,7 +282,7 @@ impl Application for WorkoutApp {
                             }),
                     );
                     row = row.push(
-                        TextInput::new(&exercise.reps.to_string(), &exercise.reps.to_string())
+                        TextInput::new(&no_zero(exercise.reps), &no_zero(exercise.reps))
                             .width(100)
                             .on_input(move |text| WorkoutMessage::UpdateText {
                                 index: i,
@@ -270,17 +291,19 @@ impl Application for WorkoutApp {
                             }),
                     );
                     row = row.push(
-                        TextInput::new(&exercise.sets.to_string(), &exercise.sets.to_string())
-                            .width(100)                            .on_input(move |text| WorkoutMessage::UpdateText {
+                        TextInput::new(&no_zero(exercise.sets), &no_zero(exercise.sets))
+                            .width(100)
+                            .on_input(move |text| WorkoutMessage::UpdateText {
                                 index: i,
                                 field: Field::Sets,
                                 text,
                             }),
                     );
+		    let 
                     row = row.push(
                         TextInput::new(
-                            &exercise.rest.as_secs_f64().to_string(),
-                            &exercise.rest.as_secs_f64().to_string(),
+                            &no_zero_f64(exercise.rest.as_secs_f64()),
+                            &no_zero_f64(exercise.rest.as_secs_f64()),
                         )
                         .width(100)
                         .on_input(move |text| WorkoutMessage::UpdateText {
@@ -348,7 +371,7 @@ impl Application for WorkoutApp {
                 column = column.push(self.make_navigation());
                 Container::new(column).center_x().center_y().into()
             }
-	}
+        }
     }
 
     type Executor = Default;
@@ -377,12 +400,7 @@ impl Application for WorkoutApp {
     fn scale_factor(&self) -> f64 {
         1.0
     }
-
-
-
-
 }
-
 
 #[derive(Debug, Clone)]
 pub enum WorkoutMessage {
