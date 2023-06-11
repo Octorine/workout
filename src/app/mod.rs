@@ -160,7 +160,7 @@ fn no_zero(n: usize) -> String {
         n.to_string()
     }
 }
-fn no_zero_f64(n: f64) -> String{
+fn no_zero_f64(n: f64) -> String {
     if n == 0.0 {
         String::new()
     } else {
@@ -252,6 +252,8 @@ impl Application for WorkoutApp {
                 header = header.push(Text::new("Reps").width(100));
                 header = header.push(Text::new("Sets").width(100));
                 header = header.push(Text::new("Rest").width(100));
+                header =
+                    header.push(Button::new("New Exercise").on_press(WorkoutMessage::AddExercise));
                 column = column.push(header);
                 column = column.push(Rule::horizontal(10));
 
@@ -299,7 +301,6 @@ impl Application for WorkoutApp {
                                 text,
                             }),
                     );
-		    let 
                     row = row.push(
                         TextInput::new(
                             &no_zero_f64(exercise.rest.as_secs_f64()),
@@ -312,6 +313,8 @@ impl Application for WorkoutApp {
                             text,
                         }),
                     );
+                    row =
+                        row.push(Button::new("Delete").on_press(WorkoutMessage::RemoveExercise(i)));
 
                     column = column.push(row);
                 }
