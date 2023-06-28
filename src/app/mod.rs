@@ -346,6 +346,7 @@ impl Application for WorkoutApp {
                         self.exercises[self.current_exercise].sets
                     ))
                     .width(Length::Fill)
+                    .height(100)
                     .horizontal_alignment(Horizontal::Center),
                 );
 
@@ -363,6 +364,7 @@ impl Application for WorkoutApp {
                     format!("{}", seconds_left.round() as usize)
                 })
                 .width(Length::Fill)
+                .height(130)
                 .horizontal_alignment(Horizontal::Center);
                 column = column.push(
                     Text::new("Rest")
