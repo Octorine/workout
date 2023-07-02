@@ -66,19 +66,9 @@ impl WorkoutApp {
                 }
             }
             AppStatus::Exercising => {
-                if self.current_set >= self.exercises[self.current_exercise].sets - 1 {
-                    self.current_set = 0;
-                    self.current_exercise += 1;
-                    if self.current_exercise > self.exercises.len() - 1 {
-                        self.status = AppStatus::Building;
-                        self.current_exercise = 0;
-                        self.current_set = 0;
-                    }
-                } else {
                     self.status = AppStatus::Resting;
                     self.last_update = Instant::now();
                     self.rest_start = Instant::now();
-                }
             }
             AppStatus::Resting => {
                 let exercise = self.exercises[self.current_exercise].clone();
